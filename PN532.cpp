@@ -9,6 +9,9 @@
 
 //#define PN532DEBUG 1
 
+
+byte felica_polling[] = {0x00, 0xFF, 0xFF, 0x00, 0x00};
+
 byte pn532ack[] = {0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00};
 byte pn532response_firmwarevers[] = {0x00, 0xFF, 0x06, 0xFA, 0xD5, 0x03};
 
@@ -322,29 +325,37 @@ uint32_t PN532::readPassiveTargetID(uint8_t cardbaudrate) {
     pn532_packetbuffer[0] = PN532_INLISTPASSIVETARGET;
     pn532_packetbuffer[1] = 1;  // max 1 cards at once (we can set this to 2 later)
     pn532_packetbuffer[2] = cardbaudrate;
+    pn532_packetbuffer[3] = 0x01; // felica polling
+    pn532_packetbuffer[4] = 0xFF; // System code
+    pn532_packetbuffer[5] = 0xFF; // System code
+    pn532_packetbuffer[6] = 0x00; // request code
+    pn532_packetbuffer[7] = 0x00; // time slot
 
-    if (! sendCommandCheckAck(pn532_packetbuffer, 3, 50))
+    if (! sendCommandCheckAck(pn532_packetbuffer, 8, 50))
         return 0x0;  // no cards read
 
     // read data packet
-    readspidata(pn532_packetbuffer, 20);
+    readspidata(pn532_packetbuffer, 27);
     // check some basic stuff
 
-    Serial.print("Found "); Serial.print(pn532_packetbuffer[7], DEC); Serial.println(" tags");
+    for (uint8_t i = 0; i < 27; i++) {
+	Serial.print(" 0x"); Serial.print(pn532_packetbuffer[i], HEX);
+    }
+
+    Serial.println("");
+
+//    Serial.print("Found "); Serial.print(pn532_packetbuffer[7], DEC); Serial.println(" tags");
     if (pn532_packetbuffer[7] != 1)
         return 0;
-    
-    uint16_t sens_res = pn532_packetbuffer[9];
-    sens_res <<= 8;
-    sens_res |= pn532_packetbuffer[10];
-    Serial.print("Sens Response: 0x");  Serial.println(sens_res, HEX);
-    Serial.print("Sel Response: 0x");  Serial.println(pn532_packetbuffer[11], HEX);
+
     cid = 0;
-    for (uint8_t i=0; i< pn532_packetbuffer[12]; i++) {
-        cid <<= 8;
-        cid |= pn532_packetbuffer[13+i];
-        Serial.print(" 0x"); Serial.print(pn532_packetbuffer[13+i], HEX);
+    Serial.print("IDm:");
+    for (uint8_t i = 0; i < 8; i++) {
+	cid <<= 8;
+        cid |= pn532_packetbuffer[11+i];
+	Serial.print(" 0x"); Serial.print(pn532_packetbuffer[11+i], HEX);
     }
+    Serial.println("");
 
 #ifdef PN532DEBUG
     Serial.println("TargetID");
