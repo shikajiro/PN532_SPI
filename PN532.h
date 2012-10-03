@@ -35,7 +35,7 @@
 #define  PN532_SPI_READY 0x01
 
 #define PN532_MIFARE_ISO14443A 0x0
-#define PN532_FELICA 0x02
+#define PN532_FELICA 0x01
 
 #define KEY_A	1
 #define KEY_B	2
